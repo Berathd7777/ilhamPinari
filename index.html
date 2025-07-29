@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İlham Pınarı | Ayet & Hadis</title>
+
+    <!-- Google Fonts ve Material Symbols -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+    <!-- Material Web Components (MD3) Script'i -->
+    <script type="module" src="https://esm.run/@material/web/all.js"></script>
+
+    <!-- GÖMÜLÜ ve GÜNCELLENMİŞ CSS KODLARI -->
+    <style>
+        :root {
+            --md-sys-color-primary: #6750A4;
+            --md-sys-color-secondary: #625B71;
+            --md-sys-color-on-surface: #1C1B1F;
+            --md-sys-color-on-primary: #FFFFFF;
+            --md-sys-color-surface: #FEF7FF;
+            --md-sys-color-outline: #79747E;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--md-sys-color-surface);
+            color: var(--md-sys-color-on-surface);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 24px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            max-width: 700px;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* Metin Seçimini Engelleme */
+        #text-area, #source-area {
+            opacity: 0;
+            transition: opacity 0.8s ease-in-out;
+            user-select: none; /* Metnin fare ile seçilmesini engeller */
+        }
+
+        #text-area {
+            font-size: 1.8rem;
+            font-weight: 400;
+            line-height: 1.6;
+            margin: 0 0 16px 0;
+            min-height: 150px;
+        }
+
+        #source-area {
+            font-size: 1.1rem;
+            font-style: italic;
+            font-weight: 500;
+            color: var(--md-sys-color-primary);
+        }
+
+        /* Butonlar */
+        #refresh-button {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            --md-fab-container-color: var(--md-sys-color-primary);
+            --md-fab-icon-color: var(--md-sys-color-on-primary);
+        }
+
+        #download-button {
+            position: fixed;
+            bottom: 32px;
+            left: 32px;
+            --md-fab-container-color: var(--md-sys-color-secondary);
+            --md-fab-icon-color: var(--md-sys-color-on-primary);
+        }
+
+        /* Ana Sayfa Logosu */
+        .main-logo {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            height: 40px;
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+        .main-logo:hover {
+            opacity: 1;
+        }
+        
+        /* POPUP MODAL STİLLERİ */
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .popup-content {
+            background-color: var(--md-sys-color-surface);
+            padding: 24px;
+            border-radius: 28px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+
+        #generated-image {
+            max-width: 100%;
+            border-radius: 16px;
+            border: 1px solid var(--md-sys-color-outline);
+            margin-bottom: 24px;
+        }
+
+        .popup-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+    <main class="container">
+        <blockquote id="text-area">Yükleniyor...</blockquote>
+        <cite id="source-area"></cite>
+    </main>
+    
+    <!-- Ana Sayfa Logosu -->
+    <img src="https://r.resimlink.com/EJZgB0t8l.png" alt="Hasan Berat Kaylan Logo" class="main-logo">
+
+
+    <!-- Butonlar -->
+    <md-fab aria-label="Yeni Söz" id="refresh-button">
+        <md-icon slot="icon">refresh</md-icon>
+    </md-fab>
+    <md-fab aria-label="İndir" id="download-button">
+        <md-icon slot="icon">download</md-icon>
+    </md-fab>
+
+    <!-- POPUP (MODAL) HTML KISMI -->
+    <div class="popup-overlay" id="popup-modal">
+        <div class="popup-content">
+            <img id="generated-image" src="" alt="Oluşturulan Resim">
+            <div class="popup-buttons">
+                <md-filled-button id="download-image-btn">İndir</md-filled-button>
+                <md-outlined-button id="copy-image-btn">Panoya Kopyala</md-outlined-button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- GÖMÜLÜ ve GÜNCELLENMİŞ JAVASCRIPT KODLARI -->
+    <script>
+        const textArea = document.getElementById('text-area');
+        const sourceArea = document.getElementById('source-area');
+        const refreshButton = document.getElementById('refresh-button');
+        const downloadButton = document.getElementById('download-button');
+        const popupModal = document.getElementById('popup-modal');
+        const generatedImage = document.getElementById('generated-image');
+        const downloadImageBtn = document.getElementById('download-image-btn');
+        const copyImageBtn = document.getElementById('copy-image-btn');
+
+        let allContent = [];
+        let currentCanvas = null;
+
+        // --- Ana Fonksiyonlar ---
+        async function fetchData() {
+            try {
+                const response = await fetch('data.json');
+                const data = await response.json();
+                allContent = [...data.ayetler, ...data.hadisler];
+                displayRandomContent();
+            } catch (error) {
+                console.error('Veri çekilirken bir hata oluştu:', error);
+                textArea.style.opacity = 1;
+                textArea.textContent = 'İçerik yüklenemedi.';
+            }
+        }
+
+        function displayRandomContent() {
+            if (allContent.length === 0) return;
+            textArea.style.opacity = 0;
+            sourceArea.style.opacity = 0;
+            setTimeout(() => {
+                const randomIndex = Math.floor(Math.random() * allContent.length);
+                const randomItem = allContent[randomIndex];
+                textArea.textContent = `“${randomItem.metin}”`;
+                textArea.style.opacity = 1;
+                setTimeout(() => {
+                    sourceArea.textContent = randomItem.kaynak;
+                    sourceArea.style.opacity = 1;
+                }, 1000);
+            }, 700);
+        }
+
+        // --- Resim Oluşturma Fonksiyonu (Async Olarak Güncellendi) ---
+        async function createImage() {
+            // Promise, logo yüklendiğinde canvas'ı döndürecek
+            return new Promise((resolve, reject) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const width = 1080;
+                const height = 1080;
+                canvas.width = width;
+                canvas.height = height;
+
+                // Logonun yüklenmesini bekle
+                const logo = new Image();
+                logo.crossOrigin = "anonymous"; // CORS hatasını önlemek için
+                logo.src = 'https://r.resimlink.com/EJZgB0t8l.png';
+
+                logo.onload = () => {
+                    // Arka Plan
+                    ctx.fillStyle = '#FEF7FF';
+                    ctx.fillRect(0, 0, width, height);
+                    
+                    // Ana Metin (Ayet/Hadis)
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = '#1C1B1F';
+                    const text = textArea.textContent;
+                    wrapText(ctx, text, width / 2, height / 2 - 50, width - 120, 70, 'bold 60px');
+
+                    // Kaynak Metni
+                    ctx.font = 'italic 40px Roboto';
+                    ctx.fillStyle = '#6750A4';
+                    const sourceText = sourceArea.textContent;
+                    const textHeight = ctx.measureText(text).actualBoundingBoxDescent;
+                    ctx.fillText(sourceText, width / 2, height / 2 + textHeight + 100);
+
+                    // Filigran (Sağ Alt)
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'bottom';
+                    ctx.font = '24px Roboto';
+                    ctx.fillStyle = '#888888';
+                    ctx.fillText('This image was created by Hasan Berat Kaylan via Github.', width - 30, height - 30);
+
+                    // Logo (Sol Alt)
+                    const logoHeight = 40;
+                    const logoWidth = logo.width * (logoHeight / logo.height);
+                    ctx.drawImage(logo, 30, height - logoHeight - 30, logoWidth, logoHeight);
+                    
+                    resolve(canvas); // Canvas hazır, Promise'i tamamla
+                };
+
+                logo.onerror = () => {
+                    reject(new Error('Logo yüklenemedi.'));
+                };
+            });
+        }
+
+        // Metni satırlara bölen yardımcı fonksiyon
+        function wrapText(context, text, x, y, maxWidth, lineHeight, font) {
+            context.font = font + ' Roboto';
+            const words = text.split(' ');
+            let line = '';
+            let testLine = '';
+            let lineArray = [];
+
+            for(var n = 0; n < words.length; n++) {
+                testLine = line + words[n] + ' ';
+                var metrics = context.measureText(testLine);
+                var testWidth = metrics.width;
+                if (testWidth > maxWidth && n > 0) {
+                    lineArray.push(line);
+                    line = words[n] + ' ';
+                } else {
+                    line = testLine;
+                }
+            }
+            lineArray.push(line);
+            let startY = y - (lineArray.length - 1) * lineHeight / 2;
+            for(var k = 0; k < lineArray.length; k++) {
+                context.fillText(lineArray[k], x, startY + (k * lineHeight));
+            }
+        }
+
+
+        // --- Olay Dinleyicileri (Event Listeners) ---
+        refreshButton.addEventListener('click', displayRandomContent);
+
+        downloadButton.addEventListener('click', async () => {
+            if (!textArea.textContent || textArea.textContent === 'Yükleniyor...') return;
+            try {
+                // Async fonksiyonun tamamlanmasını bekle
+                currentCanvas = await createImage(); 
+                generatedImage.src = currentCanvas.toDataURL('image/png');
+                popupModal.style.display = 'flex';
+            } catch (error) {
+                console.error("Resim oluşturulamadı:", error);
+                alert("Resim oluşturulurken bir hata oluştu. Lütfen logonun erişilebilir olduğundan emin olun.");
+            }
+        });
+
+        popupModal.addEventListener('click', (e) => {
+            if (e.target === popupModal) {
+                popupModal.style.display = 'none';
+            }
+        });
+
+        downloadImageBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'ilham-pinari.png';
+            link.href = generatedImage.src;
+            link.click();
+        });
+
+        copyImageBtn.addEventListener('click', () => {
+            if (!currentCanvas) return;
+            currentCanvas.toBlob(blob => {
+                navigator.clipboard.write([
+                    new ClipboardItem({ 'image/png': blob })
+                ]).then(() => {
+                    copyImageBtn.textContent = 'Kopyalandı!';
+                    setTimeout(() => { copyImageBtn.textContent = 'Panoya Kopyala'; }, 2000);
+                }).catch(err => console.error('Kopyalama başarısız:', err));
+            }, 'image/png');
+        });
+
+        // Sayfa ilk yüklendiğinde
+        fetchData();
+    </script>
+</body>
+</html>
